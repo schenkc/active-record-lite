@@ -64,7 +64,7 @@ class SQLObject < MassObject
       #{self.table_name}.id = ?
     LIMIT 1
     SQL
-    self.parse_all(results)
+    self.parse_all(results).first
   end
 
   def attributes
@@ -72,10 +72,19 @@ class SQLObject < MassObject
   end
 
   def insert
-    # ...
+    col_names = self.class.columns.join(",")
+    question_marks = (['?'] * self.class.columns.count ).join(',')
+    DBConnection.execute(<<-SQL, *attribute_values)
+    INSERT INTO
+      #{self.class.table_name} (#{col_names})
+    VALUES
+      (#{question_marks})
+    SQL
+    new_row_id = DBConnection.last_insert_row_id
+    attributes[:id] = new_row_id
   end
 
-  def initialize(params) # params is a signle hash
+  def initialize(params = {}) # params is a signle hash
     columns = self.class.columns
     params.each do |attr_name, value|
       attr_name = attr_name.to_sym
@@ -85,14 +94,26 @@ class SQLObject < MassObject
   end
 
   def save
-    # ...
+    attributes[:id].nil? ? insert : update
   end
 
   def update
-    # ...
+    set_line = attributes.each_key.map { |key| "#{key} = ?" }.join(",")
+    DBConnection.execute(<<-SQL, *attribute_values, attribute_values[0])
+    UPDATE
+    #{self.class.table_name}
+    SET
+    #{set_line}
+    WHERE
+    id = ?
+    SQL
   end
 
   def attribute_values
-    # ...
+    result = []
+    self.class.columns.each do |attr_name|
+      result << attributes[attr_name]
+    end
+    result
   end
 end
