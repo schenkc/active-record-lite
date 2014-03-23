@@ -10,11 +10,13 @@ class AssocOptions
   )
 
   def model_class
-    # ...
+    model_name = ActiveSupport::Inflector.singularize(class_name.to_s)
+    ActiveSupport::Inflector.camelcase(model_name)
   end
 
   def table_name
-    # ...
+    table_name = ActiveSupport::Inflector.pluralize(class_name.to_s)
+    ActiveSupport::Inflector.underscore(table_name)
   end
 end
 
@@ -33,7 +35,12 @@ end
 module Associatable
   # Phase IVb
   def belongs_to(name, options = {})
-    # ...
+    options = BelongsToOptions.new(name, options)
+    define_mathod(name) do
+      class_name = options[:class_name] || send(model_class)
+      foreign_key = options[:foreign_key] || { send(table_name) + "_id"}.to_sym
+      primary_key = options[:primary_key] || :id
+    end
   end
 
   def has_many(name, options = {})
@@ -46,5 +53,6 @@ module Associatable
 end
 
 class SQLObject
-  # Mixin Associatable here...
+  extend Associatable
+
 end
